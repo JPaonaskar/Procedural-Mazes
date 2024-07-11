@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en-US">
+    <head>
+        <meta charset="utf-8" />
+        <title>Simple Truchet Labyrinths</title>
+        <style>
+            canvas {
+                background: #eee;
+                display: block;
+                margin: 0 auto;
+            }
+        </style>
+    </head>
+    <b>
+        Truchet Labyrinths
+    </b>
+    <p>
+        <a href = "https://en.wikipedia.org/wiki/Truchet_tiles">Truchet tiling</a> with diagonal lines.
+    </p>
+    <body>
+        <canvas id="gameCanvas" width="480" height="576"></canvas>
+
+        <script>
+            // get canvas
+            const canvas = document.getElementById("gameCanvas");
+            const ctx = canvas.getContext("2d");
+
+            // Probabilities
+            const P_SLOPE_POS = 0.45; 
+            const P_SLOPE_NEG = 0.45;
+
+            // key tracker
+            let keys = [];
+
+            // key down
+            function keyDownHandler(e) {
+                if (!keys.includes(e.key)) {
+                    // add key to keys
+                    keys.push(e.key);
+                }
+            }
+
+            // key up
+            function keyUpHandler(e) {
+                for (let i = 0; i < keys.length; i++) {
+                    if (keys[i] == e.key) {
+                        // remove key
+                        keys.splice(i,1);
+                        break;
+                    }
+                }
+            }
+
+            class Chunk {
+                // construct chunk (x, y, h, w are defined in numbers of tiles)
+                constructor(x, y, w, h, tileSize, color) {
+                    this.x = x;
+                    this.y = y;
+                    this.w = w;
+                    this.h = h;
+                    this.tileSize = tileSize;
+                    this.color = color;
+
+                    // set up for generation
+                    // set size
+                    const rows = this.h;
+                    const columns = this.w;
+                    
+                    // create wall data
+                    this.wallData = new Array(rows);
+                    for (let row = 0; row < rows; row++) {
+                        this.wallData[row] = new Array(columns);
+                    }
+
+                    // loop index
+                    this.i = 0;
+                    this.generated = false;
+                }
+
+                // probablity dictate walls
+                generate() {
+                    // fill with walls (0 = POSITIVE SLOPE, 1 = NEGITIVE SLOPE)
+                    if (this.i < this.w*this.h) {
+                        const row = Math.floor(this.i / this.w);
+                        const column = this.i % this.w;
+
+                        // pick wall
+                        let num = Math.random();
+                        if (num <= P_SLOPE_POS) {
+                            this.wallData[row][column] = 0;
+                        }
+                        else if (num >= 1 - P_SLOPE_NEG) {
+                            this.wallData[row][column] = 1;
+                        }
+
+                        // increment
+                        this.i++;
+                    }
+                    else if (this.i == this.w*this.h) {
+                        // chunk has been generated
+                        this.generated = true;
+
+                        // increment
+                        this.i++;
+                    }
+                }
+
+                render() {
+                    // loop through wall data and generate each wall
+                    for (let row = 0; row < this.wallData.length; row++) {
+                        for (let column = 0; column < this.wallData[row].length; column++) {
+                            if (this.wallData[row][column] == 0) {
+                                // POSITIVE SLOPE
+                                const x1 = this.x + column + 1;
+                                const x2 = this.x + column;
+                                const y1 = this.y + row;
+                                const y2 = this.y + row + 1;
+
+                                // set line style
+                                ctx.strokeStyle = this.color;
+                                ctx.lineWidth = 2;
+
+                                // draw line :)
+                                ctx.beginPath();
+                                ctx.moveTo(x1*this.tileSize, y1*this.tileSize);
+                                ctx.lineTo(x2*this.tileSize, y2*this.tileSize);
+                                ctx.stroke();
+                            }
+                            else if (this.wallData[row][column] == 1) {
+                                // NEGITIVE SLOPE
+                                const x1 = this.x + column;
+                                const x2 = this.x + column + 1;
+                                const y1 = this.y + row;
+                                const y2 = this.y + row + 1;
+
+                                // set line style
+                                ctx.strokeStyle = this.color;
+                                ctx.lineWidth = 2;
+
+                                // draw line :)
+                                ctx.beginPath();
+                                ctx.moveTo(x1*this.tileSize, y1*this.tileSize);
+                                ctx.lineTo(x2*this.tileSize, y2*this.tileSize);
+                                ctx.stroke();
+                            }
+                        }
+                    }
+                }
+
+                collide(player) {
+                    // convert player position to row and column
+                    const column = Math.floor(player.x / this.tileSize - this.x)
+                    const row = Math.floor(player.y / this.tileSize - this.y)
+
+                    // loop though each case
+                    for (let i = -1; i <= 1; i++) {
+                        for (let j = -1; j <= 1; j++) {
+                            const rowi = row + i;
+                            const columnj = column + j;
+                            // if collision point is in bounds
+                            if (rowi >= 0 && rowi < this.h && columnj >= 0 && columnj < this.w) {
+                                // collisions
+                                if (this.wallData[rowi][columnj] == 0){
+                                    // POSITIVE SLOPE
+                                    const x1 = (this.x + columnj + 1)*this.tileSize;
+                                    const x2 = (this.x + columnj)*this.tileSize;
+                                    const y1 = (this.y + rowi)*this.tileSize;
+                                    const y2 = (this.y + rowi + 1)*this.tileSize;
+                                    player.collide_line(x1, y1, x2, y2);
+                                }
+                                if (this.wallData[rowi][columnj] == 1){
+                                    // NEGITIVE SLOPE
+                                    const x1 = (this.x + columnj)*this.tileSize;
+                                    const x2 = (this.x + columnj + 1)*this.tileSize;
+                                    const y1 = (this.y + rowi)*this.tileSize;
+                                    const y2 = (this.y + rowi + 1)*this.tileSize;
+                                    player.collide_line(x1, y1, x2, y2);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            class Player {
+                constructor(x, y, r, color, a, drag) {
+                    // position
+                    this.x = x;
+                    this.y = y;
+
+                    // size
+                    this.r = r;
+                    
+                    // physics
+                    this.vx = 0;
+                    this.vy = 0;
+                    this.a = a;
+                    this.drag = drag;
+
+                    // style
+                    this.color = color;
+                }
+
+                render() {
+                    // draw cicle :)
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+                    ctx.fillStyle = this.color;
+                    ctx.fill();
+                    ctx.closePath();
+                }
+
+                control() {
+                    // keys to acceleration
+                    if (keys.includes("ArrowUp") || keys.includes("w")) {
+                        this.vy -= this.a;
+                    }
+                    if (keys.includes("ArrowDown") || keys.includes("s")) {
+                        this.vy += this.a;
+                    }
+                    if (keys.includes("ArrowLeft") || keys.includes("a")) {
+                        this.vx -= this.a;
+                    }
+                    if (keys.includes("ArrowRight") || keys.includes("d")) {
+                        this.vx += this.a;
+                    }
+                }
+
+                move() {
+                    // collide with boundries
+                    // x
+                    if (this.x - this.r + this.vx <= 0) {
+                        this.vx = Math.abs(this.vx);
+                    }
+                    else if (this.x + this.r + this.vx>= canvas.width) {
+                        this.vx = -Math.abs(this.vx);
+                    }
+                    // y
+                    if (this.y - this.r + this.vy <= 0) {
+                        this.vy = Math.abs(this.vy);
+                    }
+                    else if (this.y + this.r + this.vy >= canvas.height) {
+                        this.vy = -Math.abs(this.vy);
+                    }
+
+                    // move
+                    this.x += this.vx;
+                    this.y += this.vy;
+
+                    // drag
+                    this.vx *= 1 - this.drag;
+                    this.vy *= 1 - this.drag;
+                }
+
+                collide_line(x1, y1, x2, y2) {
+                    // set line style
+                    ctx.strokeStyle = 'red';
+                    ctx.lineWidth = 2;
+
+                    // draw line :)
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.stroke();
+
+                    // set up quadratic fromula
+                    const a = Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2)
+                    const b = 2*(x1 - this.x)*(x2 - x1) + 2*(y1 - this.y)*(y2 - y1)
+                    const c = Math.pow(x1 - this.x, 2) + Math.pow(y1 - this.y, 2) - Math.pow(this.r, 2)
+                    const disc = Math.pow(b, 2) - 4*a*c
+
+                    // collsion "time"
+                    let tc = null
+
+                    // one possible collsion point
+                    if (disc == 0) {
+                        const t = -b / (2*a)
+
+                        // if on segment
+                        if (t >= 0 && t <= 1) {
+                            // save collsion "time"
+                            tc = t
+                        }
+                        else {
+                            // not colliding so exit function
+                            return;
+                        }
+                    }
+                    // two possible collision points
+                    else if (disc > 0) {
+                        const t1 = (-b + Math.sqrt(disc)) / (2*a)
+                        const t2 = (-b - Math.sqrt(disc)) / (2*a)
+
+                        // center case
+                        if ((t1 >= 0 && t1 <= 1) && (t2 >= 0 && t2 <= 1)) {
+                            // save collsion "time"
+                            tc = 0.5*(t1 + t2)
+                        }
+                        // edge case 1
+                        else if (t1 >= 0 && t1 <= 1) {
+                            // save collsion "time"
+                            tc = 0.5*t1
+                        }
+                        // edge case 2
+                        else if (t2 >= 0 && t2 <= 1) {
+                            // save collsion "time"
+                            tc = 0.5*(1 + t2)
+                        }
+                        // not colliding
+                        else {
+                            // not colliding so exit function
+                            return;
+                        }
+                    }
+                    else {
+                            // not colliding so exit function
+                        return;
+                    }
+
+                    // collision point
+                    const cx = (x2 - x1)*tc + x1
+                    const cy = (y2 - y1)*tc + y1
+
+                    // normal (line normal but approximates rounded caps of lines)
+                    const normx = this.x - cx
+                    const normy = this.y - cy
+                    const mag2Norm = Math.pow(normx, 2) + Math.pow(normy, 2)
+
+                    // project velocity on normal
+                    const dot = normx*this.vx + normy*this.vy
+
+                    // if velocity is towards the line
+                    if (dot < 0) {
+                        // change velocity by twice the projection on the normal
+                        this.vx -= 2*dot / mag2Norm * normx
+                        this.vy -= 2*dot / mag2Norm * normy
+                    }
+                }
+            }
+
+            // create chunks
+            let chunk1 = new Chunk( 1,  1, 9, 11, 24, "black");
+            let chunk2 = new Chunk(10,  1, 9, 11, 24, "green");
+            let chunk3 = new Chunk( 1, 12, 9, 11, 24, "green");
+            let chunk4 = new Chunk(10, 12, 9, 11, 24, "black");
+
+            // create player
+            let player = new Player(0.5*canvas.width,
+                                    0.5*canvas.height+12.0,
+                                    5.0,
+                                    "#0095DD",
+                                    0.5,
+                                    0.1)
+
+            function update() {
+                // clear
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // render chunks
+                chunk1.render();
+                chunk2.render();
+                chunk3.render();
+                chunk4.render();
+
+                // if chunks are generated move
+                if (chunk1.generated && chunk2.generated && chunk3.generated && chunk4.generated) {
+                    // render player
+                    player.render();
+
+                    // control player
+                    player.control();
+
+                    // collide with maze walls in chuncks
+                    chunk1.collide(player);
+                    chunk2.collide(player);
+                    chunk3.collide(player);
+                    chunk4.collide(player);
+
+                    // move player (after collisions to avoid clipping)
+                    player.move();
+                }
+                // generate chunks
+                else {
+                    chunk1.generate()
+                    chunk2.generate()
+                    chunk3.generate()
+                    chunk4.generate()
+                }
+            }
+
+            // event listeners
+            document.addEventListener("keydown", keyDownHandler, false);
+            document.addEventListener("keyup", keyUpHandler, false);
+
+            // run update
+            setInterval(update, 25);
+        </script>
+    </body>
+</html>

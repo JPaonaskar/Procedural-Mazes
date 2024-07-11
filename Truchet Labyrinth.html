@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en-US">
+    <head>
+        <meta charset="utf-8" />
+        <title>Truchet Labyrinths</title>
+        <style>
+            canvas {
+                background: #eee;
+                display: block;
+                margin: 0 auto;
+            }
+        </style>
+    </head>
+    <body>
+        <canvas id="gameCanvas"></canvas>
+
+        <script>
+            /////////////// PLAYER ///////////////
+            // player position
+            const PLAYER_X = 10;
+            const PLAYER_Y = 50;
+
+            // player size and style
+            const PLAYER_R = 7.0;
+            const PLAYER_COLOR = "#0095DD";
+
+            // player movement
+            const PLAYER_ACCEL = 0.5;
+            const PLAYER_DRAG = 0.10;
+
+
+
+            /////////////// CAMERA ///////////////
+            // camera movement
+            const CAMERA_DRAG = 0.95;
+
+
+
+            /////////////// CHUNKS ///////////////
+            // chunk dimentions
+            const CHUNK_W = 5;
+            const CHUNK_H = 5;
+
+            // size of tiles
+            const TILE_SIZE = 30.0;
+
+            // style
+            const CHUNK_COLOR = "#000000";
+
+            // padding beween window edge
+            const RENDER_PADDING = 0;
+
+            // seed for RDG
+            const SEED = 12345;
+
+            
+
+            /////////////// GAME MECH ///////////////
+            // delay between frames
+            const MILISECONDS_PER_FRAME = 25;
+        </script>
+        
+        <script src="Scripts/RDG.js"></script>
+        <script src="Scripts/player.js"></script>
+        <script src="Scripts/camera.js"></script>
+        <script src="Scripts/Truchet Labyrinths/chunk.js"></script>
+        <script src="Scripts/chunkLoader.js"></script>
+        <script src="Scripts/main.js"></script>
+    </body>
+</html>
